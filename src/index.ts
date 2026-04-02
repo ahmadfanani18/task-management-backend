@@ -5,10 +5,12 @@ import cookieParser from 'cookie-parser'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import dotenv from 'dotenv'
+import swaggerUi from 'swagger-ui-express'
 import authRoutes from './routes/auth'
 import workspaceRoutes from './routes/workspace'
 import projectRoutes from './routes/project'
 import taskRoutes from './routes/task'
+import swaggerDocument from './swagger.json'
 
 dotenv.config()
 
@@ -25,6 +27,8 @@ app.use(helmet())
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }))
 app.use(express.json())
 app.use(cookieParser())
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/workspaces', workspaceRoutes)
