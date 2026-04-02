@@ -62,6 +62,86 @@
           "dueDate": { "type": "string" }
         }
       },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "workspaceId": { "type": "string" },
+          "name": { "type": "string" },
+          "color": { "type": "string" }
+        }
+      },
+      "Sprint": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "projectId": { "type": "string" },
+          "name": { "type": "string" },
+          "goal": { "type": "string" },
+          "status": { "type": "string", "enum": ["planning", "active", "completed"] },
+          "startDate": { "type": "string" },
+          "endDate": { "type": "string" }
+        }
+      },
+      "Goal": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "workspaceId": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "color": { "type": "string" },
+          "startDate": { "type": "string" },
+          "targetDate": { "type": "string" },
+          "status": { "type": "string", "enum": ["on_track", "at_risk", "off_track", "achieved", "cancelled"] }
+        }
+      },
+      "TimeEntry": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "taskId": { "type": "string" },
+          "userId": { "type": "string" },
+          "description": { "type": "string" },
+          "duration": { "type": "number" },
+          "date": { "type": "string" }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { "type": "string" },
+          "type": { "type": "string" },
+          "title": { "type": "string" },
+          "message": { "type": "string" },
+          "read": { "type": "boolean" },
+          "actionUrl": { "type": "string" },
+          "createdAt": { "type": "string" }
+        }
+      },
+      "View": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "projectId": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["list", "board", "calendar", "gantt"] },
+          "config": { "type": "object" },
+          "filters": { "type": "object" },
+          "sortBy": { "type": "array" },
+          "isDefault": { "type": "boolean" }
+        }
+      },
+      "TaskDependency": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "taskId": { "type": "string" },
+          "dependsOnId": { "type": "string" },
+          "type": { "type": "string", "enum": ["blocks", "blocked_by", "relates_to"] }
+        }
+      },
       "Error": {
         "type": "object",
         "properties": {
@@ -136,6 +216,16 @@
         "responses": {
           "200": { "description": "Login successful" },
           "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Refresh access token",
+        "responses": {
+          "200": { "description": "Token refreshed" },
+          "401": { "description": "Refresh token invalid or expired" }
         }
       }
     },
@@ -266,12 +356,12 @@
         }
       }
     },
-    "/api/workspaces/{id}/members/{userId}": {
+    "/api/workspaces/{workspaceId}/members/{userId}": {
       "delete": {
         "tags": ["Workspaces"],
         "summary": "Remove member from workspace",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
@@ -282,7 +372,7 @@
         "tags": ["Workspaces"],
         "summary": "Update member role",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "requestBody": {
@@ -617,6 +707,527 @@
         ],
         "responses": {
           "200": { "description": "Checklist item deleted" }
+        }
+      }
+    },
+    "/api/tags/workspace/{workspaceId}": {
+      "get": {
+        "tags": ["Tags"],
+        "summary": "List tags in workspace",
+        "parameters": [
+          { "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of tags" }
+        }
+      },
+      "post": {
+        "tags": ["Tags"],
+        "summary": "Create tag",
+        "parameters": [
+          { "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "color"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "color": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Tag created" }
+        }
+      }
+    },
+    "/api/tags/{id}": {
+      "patch": {
+        "tags": ["Tags"],
+        "summary": "Update tag",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "color": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Tag updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Tags"],
+        "summary": "Delete tag",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Tag deleted" }
+        }
+      }
+    },
+    "/api/tags/task/{taskId}/{tagId}": {
+      "post": {
+        "tags": ["Tags"],
+        "summary": "Add tag to task",
+        "parameters": [
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "tagId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "201": { "description": "Tag added to task" }
+        }
+      },
+      "delete": {
+        "tags": ["Tags"],
+        "summary": "Remove tag from task",
+        "parameters": [
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "tagId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Tag removed from task" }
+        }
+      }
+    },
+    "/api/sprints/project/{projectId}": {
+      "get": {
+        "tags": ["Sprints"],
+        "summary": "List sprints in project",
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of sprints" }
+        }
+      },
+      "post": {
+        "tags": ["Sprints"],
+        "summary": "Create sprint",
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "startDate", "endDate"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "goal": { "type": "string" },
+                  "startDate": { "type": "string" },
+                  "endDate": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Sprint created" }
+        }
+      }
+    },
+    "/api/sprints/{id}": {
+      "patch": {
+        "tags": ["Sprints"],
+        "summary": "Update sprint",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "goal": { "type": "string" },
+                  "startDate": { "type": "string" },
+                  "endDate": { "type": "string" },
+                  "status": { "type": "string", "enum": ["planning", "active", "completed"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Sprint updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Sprints"],
+        "summary": "Delete sprint",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Sprint deleted" }
+        }
+      }
+    },
+    "/api/goals/workspace/{workspaceId}": {
+      "get": {
+        "tags": ["Goals"],
+        "summary": "List goals in workspace",
+        "parameters": [
+          { "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of goals" }
+        }
+      },
+      "post": {
+        "tags": ["Goals"],
+        "summary": "Create goal",
+        "parameters": [
+          { "name": "workspaceId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "color"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "color": { "type": "string" },
+                  "startDate": { "type": "string" },
+                  "targetDate": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Goal created" }
+        }
+      }
+    },
+    "/api/goals/{id}": {
+      "patch": {
+        "tags": ["Goals"],
+        "summary": "Update goal",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "color": { "type": "string" },
+                  "startDate": { "type": "string" },
+                  "targetDate": { "type": "string" },
+                  "status": { "type": "string", "enum": ["on_track", "at_risk", "off_track", "achieved", "cancelled"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Goal updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Goals"],
+        "summary": "Delete goal",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Goal deleted" }
+        }
+      }
+    },
+    "/api/goals/{id}/tasks": {
+      "post": {
+        "tags": ["Goals"],
+        "summary": "Add task to goal",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["taskId"],
+                "properties": {
+                  "taskId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Task added to goal" }
+        }
+      },
+      "delete": {
+        "tags": ["Goals"],
+        "summary": "Remove task from goal",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Task removed from goal" }
+        }
+      }
+    },
+    "/api/time-entries/task/{taskId}": {
+      "get": {
+        "tags": ["TimeEntries"],
+        "summary": "List time entries for task",
+        "parameters": [
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of time entries" }
+        }
+      }
+    },
+    "/api/time-entries": {
+      "post": {
+        "tags": ["TimeEntries"],
+        "summary": "Create time entry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["taskId", "duration", "date"],
+                "properties": {
+                  "taskId": { "type": "string" },
+                  "description": { "type": "string" },
+                  "duration": { "type": "number" },
+                  "date": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Time entry created" }
+        }
+      }
+    },
+    "/api/time-entries/{id}": {
+      "patch": {
+        "tags": ["TimeEntries"],
+        "summary": "Update time entry",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": { "type": "string" },
+                  "duration": { "type": "number" },
+                  "date": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Time entry updated" }
+        }
+      },
+      "delete": {
+        "tags": ["TimeEntries"],
+        "summary": "Delete time entry",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Time entry deleted" }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List notifications",
+        "responses": {
+          "200": { "description": "List of notifications" }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "tags": ["Notifications"],
+        "summary": "Mark notification as read",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Notification marked as read" }
+        }
+      }
+    },
+    "/api/notifications/read-all": {
+      "patch": {
+        "tags": ["Notifications"],
+        "summary": "Mark all notifications as read",
+        "responses": {
+          "200": { "description": "All notifications marked as read" }
+        }
+      }
+    },
+    "/api/notifications/{id}": {
+      "delete": {
+        "tags": ["Notifications"],
+        "summary": "Delete notification",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Notification deleted" }
+        }
+      }
+    },
+    "/api/views/project/{projectId}": {
+      "get": {
+        "tags": ["Views"],
+        "summary": "List views in project",
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of views" }
+        }
+      },
+      "post": {
+        "tags": ["Views"],
+        "summary": "Create view",
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "type"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "type": { "type": "string", "enum": ["list", "board", "calendar", "gantt"] },
+                  "config": { "type": "object" },
+                  "filters": { "type": "object" },
+                  "sortBy": { "type": "array" },
+                  "isDefault": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "View created" }
+        }
+      }
+    },
+    "/api/views/{id}": {
+      "patch": {
+        "tags": ["Views"],
+        "summary": "Update view",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "config": { "type": "object" },
+                  "filters": { "type": "object" },
+                  "sortBy": { "type": "array" },
+                  "isDefault": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "View updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Views"],
+        "summary": "Delete view",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "View deleted" }
+        }
+      }
+    },
+    "/api/dependencies": {
+      "post": {
+        "tags": ["Dependencies"],
+        "summary": "Create task dependency",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["taskId", "dependsOnId", "type"],
+                "properties": {
+                  "taskId": { "type": "string" },
+                  "dependsOnId": { "type": "string" },
+                  "type": { "type": "string", "enum": ["blocks", "blocked_by", "relates_to"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Dependency created" }
+        }
+      }
+    },
+    "/api/dependencies/{id}": {
+      "delete": {
+        "tags": ["Dependencies"],
+        "summary": "Delete task dependency",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Dependency deleted" }
         }
       }
     }
