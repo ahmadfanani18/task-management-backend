@@ -40,6 +40,12 @@ router.post('/login', async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+    })
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     })
     res.json(result)
@@ -54,8 +60,31 @@ router.post('/login', async (req, res) => {
   }
 })
 
+router.post('/refresh', async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token diperlukan' })
+    }
+    const result = await authService.refreshAccessToken(refreshToken)
+    res.cookie('token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+    })
+    res.json(result)
+  } catch (err) {
+    if (err instanceof Error) {
+      return res.status(401).json({ error: err.message })
+    }
+    res.status(500).json({ error: 'Terjadi kesalahan server' })
+  }
+})
+
 router.post('/logout', (req, res) => {
   res.clearCookie('token')
+  res.clearCookie('refreshToken')
   res.json({ message: 'Berhasil logout' })
 })
 

@@ -4,7 +4,9 @@ import jwt from 'jsonwebtoken'
 import { prisma } from '../prisma/client'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
-const JWT_EXPIRES_IN = '7d'
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key'
+const JWT_EXPIRES_IN = '15m'
+const JWT_REFRESH_EXPIRES_IN = '7d'
 
 export async function register(email: string, password: string, name?: string) {
   const existing = await prisma.user.findUnique({ where: { email } })
@@ -32,11 +34,27 @@ export async function login(email: string, password: string) {
     throw new Error('Email atau password salah')
   }
 
-  const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+  const token = jwt.sign({ userId: user.id, type: 'access' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+  const refreshToken = jwt.sign({ userId: user.id, type: 'refresh' }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN })
 
   return {
     user: { id: user.id, email: user.email, name: user.name },
     token,
+    refreshToken,
+  }
+}
+
+export async function refreshAccessToken(refreshToken: string) {
+  try {
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as { userId: string; type: string }
+    if (decoded.type !== 'refresh') {
+      throw new Error('Invalid token type')
+    }
+
+    const token = jwt.sign({ userId: decoded.userId, type: 'access' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+    return { token }
+  } catch {
+    throw new Error('Refresh token tidak valid atau sudah kedaluwarsa')
   }
 }
 

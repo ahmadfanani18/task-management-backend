@@ -24,8 +24,12 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   }
 
   try {
-    const secret = process.env.JWT_SECRET || 'your-secret-key'
-    const decoded = jwt.verify(token, secret) as { userId: string }
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; type: string }
+    
+    if (decoded.type !== 'access') {
+      return res.status(401).json({ error: 'Token tidak valid' })
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },

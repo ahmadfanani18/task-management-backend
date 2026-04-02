@@ -10,6 +10,13 @@ import authRoutes from './routes/auth'
 import workspaceRoutes from './routes/workspace'
 import projectRoutes from './routes/project'
 import taskRoutes from './routes/task'
+import tagRoutes from './routes/tag'
+import sprintRoutes from './routes/sprint'
+import goalRoutes from './routes/goal'
+import timeEntryRoutes from './routes/timeEntry'
+import notificationRoutes from './routes/notification'
+import viewRoutes from './routes/view'
+import dependencyRoutes from './routes/dependency'
 import swaggerDocument from './swagger.json'
 
 dotenv.config()
@@ -34,6 +41,13 @@ app.use('/api/auth', authRoutes)
 app.use('/api/workspaces', workspaceRoutes)
 app.use('/api/projects', projectRoutes)
 app.use('/api/tasks', taskRoutes)
+app.use('/api/tags', tagRoutes)
+app.use('/api/sprints', sprintRoutes)
+app.use('/api/goals', goalRoutes)
+app.use('/api/time-entries', timeEntryRoutes)
+app.use('/api/notifications', notificationRoutes)
+app.use('/api/views', viewRoutes)
+app.use('/api/dependencies', dependencyRoutes)
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
 
